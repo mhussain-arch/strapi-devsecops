@@ -1,4 +1,3 @@
-# Signing new commit
 - name: TruffleHog OSS
   uses: trufflesecurity/trufflehog@v3.88.26
 
