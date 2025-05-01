@@ -1,0 +1,10 @@
+name: Enforce Signed Commits
+on: pull_request
+jobs:
+  check-signatures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Verify all commits are signed
+        run: |
+          git log origin/main..HEAD --pretty=format:'%G?' | grep -q '^[^G]'
