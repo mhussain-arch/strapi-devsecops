@@ -1,0 +1,25 @@
+name: Enforce Signed Commits
+on: pull_request
+jobs:
+  check-signatures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch origin main
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin main
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Verify origin/main exists
+        run: git rev-parse --verify origin/main
+
+      - uses: actions/checkout@v3
+      - name: Verify all commits are signed
+        run: |
+          if git rev-parse --verify origin/main >/dev/null 2>&1; then
+            git log origin/main..HEAD --pretty=format:'%G?' | grep -q '^[^G]'
+          else
+            echo "origin/main does not exist. Skipping unsigned commit check."
+          fi
