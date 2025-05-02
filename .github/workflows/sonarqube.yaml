@@ -16,7 +16,7 @@ jobs:
           projectBaseDir: .
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
-          
+
       - name: Verify report-task.txt
         run: ls -l .scannerwork/report-task.txt
 
@@ -27,4 +27,3 @@ jobs:
           pollingTimeoutSec: 600
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
