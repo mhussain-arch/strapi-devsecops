@@ -1,12 +1,10 @@
-name: Trufflehog secret scanning
+name: Test
 
 on:
   push:
     branches:
-      - '**'
-    pull_requests:
-      branches:
-       - main
+      - main
+  pull_request:
 
 permissions:
   contents: read
@@ -20,21 +18,22 @@ jobs:
     defaults:
       run:
         shell: bash
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v3
-          with:
-            fetch-depth: 0
-        - name: TruffleHog OSS
-          id: trufflehog
-          uses: trufflesecurity/trufflehog@main
-          continue-on-error: true
-          with:
-            path: ./
-            base: "${{ github.event.repository.default_branch}}"
-            head: HEAD
-            extra_args: --debug
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-        - name: scan Results Status
-          if: steps.trufflehog.outcome == 'failure'
-          run: exit 1
+      - name: TruffleHog OSS
+        id: trufflehog
+        uses: trufflesecurity/trufflehog@main
+        continue-on-error: true
+        with:
+          path: ./
+          base: "${{ github.event.repository.default_branch }}"
+          head: HEAD
+          extra_args: --debug
+
+      - name: Scan Results Status
+        if: steps.trufflehog.outcome == 'failure'
+        run: exit 1
