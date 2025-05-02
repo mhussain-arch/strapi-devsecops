@@ -3,8 +3,10 @@ name: Trufflehog secret scanning
 on:
   push:
     branches:
-      - main
+      - '**'
     pull_requests:
+      branches:
+       - main
 
 permissions:
   contents: read
