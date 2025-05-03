@@ -1,7 +1,13 @@
 # .github/workflows/sonarqube.yml
 name: SonarCloud Scan
-on: [push]
+on:
+  push:
+    branches:
+     - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
+name: Main Workflow
 jobs:
   sonarqube:
     name: SonarQube
@@ -17,9 +23,6 @@ jobs:
           projectBaseDir: .
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      - name: Verify report-task.txt
-        run: cat .scannerwork/report-task.txt
 
       - name: Check Quality Gate
         id: sonarqube-quality-gate-check
