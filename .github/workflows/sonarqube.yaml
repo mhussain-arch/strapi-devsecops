@@ -1,4 +1,4 @@
-# .github/workflows/sonarcloud.yml
+# .github/workflows/sonarqube.yml
 name: SonarCloud Scan
 on: [push, pull_request]
 
@@ -16,10 +16,10 @@ jobs:
         with:
           projectBaseDir: .
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Verify report-task.txt
-        run: ls -l .scannerwork/report-task.txt
+        run: cat -l .scannerwork/report-task.txt
 
       - name: Check Quality Gate
         id: sonarqube-quality-gate-check
@@ -27,4 +27,4 @@ jobs:
         with:
           pollingTimeoutSec: 600
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_CLOUD_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
