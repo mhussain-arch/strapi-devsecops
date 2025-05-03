@@ -1,3 +1,4 @@
+# snyk.yaml for SCA
 name: Snyk NodeJS Workflow
 on: push
 jobs:
