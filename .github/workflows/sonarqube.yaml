@@ -3,15 +3,16 @@ name: SonarCloud Scan
 on: [push, pull_request]
 
 jobs:
-  sonar:
+  sonarqube:
+    name: SonarQube
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         with:
           projectBaseDir: .
         env:
