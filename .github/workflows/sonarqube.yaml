@@ -19,7 +19,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Verify report-task.txt
-        run: cat -l .scannerwork/report-task.txt
+        run: cat .scannerwork/report-task.txt
 
       - name: Check Quality Gate
         id: sonarqube-quality-gate-check
