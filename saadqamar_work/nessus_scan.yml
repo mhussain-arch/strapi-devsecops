@@ -1,0 +1,55 @@
+name: Nessus Vulnerability Scan (Windows)
+
+on:
+  push:
+    branches:
+      - saadqamar_work
+
+jobs:
+  nessus-scan:
+    runs-on: windows-latest
+
+    steps:
+      # Checkout your repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Install curl (for API requests)
+      - name: Install curl
+        run: choco install curl -y
+
+      # Run Nessus Scan
+      - name: Start Nessus Scan
+        run: |
+          # Set variables
+          $NESSUS_URL = "https://localhost:8834/"
+          $NESSUS_ACCESS_KEY = "f8bc9249c2eaa72a5e6d4d0622526e0b08252f9ac35f431a86e2d1dd26c0d374"
+          $NESSUS_SECRET_KEY = "a75d247278a628ba7333912f811ef0d196d6c974bfb5533b2e383fc4a8542d93"
+
+          # Authenticate to Nessus
+          $response = Invoke-RestMethod -Uri "$NESSUS_URL/session" -Method POST -Body '{"username":"saadqamar478","password":"s@@dq@m@r478"}' -ContentType "application/json"
+          $token = $response.token
+
+          # Launch a scan without UUID
+          $scanPayload = @{
+            settings = @{
+              name = "GitHub Scan"
+              text_targets = "192.168.1.10,192.168.1.20"  # Replace with your target IPs
+              description = "Scan initiated via GitHub Actions"
+              policy_id = 1  # Use an appropriate policy ID from Nessus
+            }
+          }
+          $scanResponse = Invoke-RestMethod -Uri "$NESSUS_URL/scans" -Method POST -Headers @{ "X-Cookie" = "token=$token" } -Body ($scanPayload | ConvertTo-Json -Depth 2) -ContentType "application/json"
+          $scanId = $scanResponse.scan.id
+          Write-Output "Scan started with ID: $scanId"
+
+          # Wait for scan to complete
+          $status = ""
+          while ($status -ne "completed") {
+            Start-Sleep -Seconds 30
+            $status = (Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId" -Method GET -Headers @{ "X-Cookie" = "token=$token" }).info.status
+            Write-Output "Scan status: $status"
+          }
+
+          # Download the scan report
+          Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId/export" -Method GET -Headers @{ "X-Cookie" = "token=$token" } -OutFile nessus_report.json
