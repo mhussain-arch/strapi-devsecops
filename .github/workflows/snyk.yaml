@@ -12,5 +12,3 @@ jobs:
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_API_KEY }}
-        with:
-          args: --all-projects
