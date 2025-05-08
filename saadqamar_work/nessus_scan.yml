@@ -27,7 +27,7 @@ jobs:
           $NESSUS_PASSWORD = "${{ secrets.NESSUS_PASSWORD }}"
 
           # Authenticate to Nessus
-          $response = Invoke-RestMethod -Uri "$NESSUS_URL/session" -Method POST -Body (@{ username = $NESSUS_USERNAME; password = $NESSUS_PASSWORD } | ConvertTo-Json) -ContentType "application/json"
+          $response = Invoke-RestMethod -Uri "$NESSUS_URL/session" -Method POST -Body (@{ username = saadqamar478; password = s@@dq@m@r478 } | ConvertTo-Json) -ContentType "application/json"
           $token = $response.token
 
           # Launch a scan
