@@ -1,28 +1,34 @@
-# 1. Build stage using official Strapi builder (Node 18)
-FROM strapi/strapi:latest AS builder
+# ---- STAGE 1: Install Dependencies ----
+FROM node:18-alpine AS deps
+RUN apk add --no-cache python3 make g++ git
 
-WORKDIR /usr/src/api
+WORKDIR /app
 COPY package.json yarn.lock ./
+RUN corepack enable \
+    && corepack prepare yarn@4.5.0 --activate \
+    && yarn install
 
-RUN yarn install
-
-# Copy source and build admin UI
+# ---- STAGE 2: Build Admin UI ----
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN yarn build
 
-# 2. Runtime stage (also Node 18)
-FROM strapi/strapi:latest
+# ---- STAGE 3: Runtime ----
+FROM node:18-alpine AS runtime
+WORKDIR /app
 
-WORKDIR /usr/src/api
-# Copy only what’s needed at runtime
-COPY --from=builder /usr/src/api/node_modules ./node_modules
-COPY --from=builder /usr/src/api/build       ./build
-COPY --from=builder /usr/src/api/public      ./public
-COPY --from=builder /usr/src/api/server.js   ./server.js
-COPY --from=builder /usr/src/api/config      ./config
+COPY --from=deps    /app/node_modules ./node_modules
+COPY --from=builder /app/build        ./build
+COPY --from=builder /app/public       ./public
+COPY --from=builder /app/server.js    ./server.js
+COPY --from=builder /app/config       ./config
 
-# Drop to non-root user
-USER node
+# Create a non-root user and chown
+RUN addgroup -S strapi && adduser -S strapi -G strapi \
+    && chown -R strapi:strapi /app
+USER strapi
 
 EXPOSE 1337
-CMD ["node", "server.js"]
+CMD ["node", "server.js"]    
