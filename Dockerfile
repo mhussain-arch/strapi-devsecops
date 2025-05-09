@@ -4,7 +4,7 @@ FROM node:18-slim AS builder
 WORKDIR /app
 
 # Switch to Yarn Classic (v1) as Strapi works better with it
-RUN npm install -g yarn
+# RUN npm install -g yarn # yarn already exists apparently
 
 # Copy package files and workspace directories first
 COPY package.json yarn.lock .yarnrc* ./
