@@ -11,7 +11,7 @@ RUN corepack enable && \
 COPY package.json yarn.lock ./
 
 # Install all dependencies (including devDependencies)
-RUN yarn install --frozen-lockfile
+RUN yarn install
 
 # Copy application code
 COPY . .
