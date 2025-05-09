@@ -4,8 +4,8 @@ FROM strapi/strapi:latest AS builder
 # Copy your app into the container
 WORKDIR /usr/src/api
 COPY package.json yarn.lock ./
-# Install dependencies (production only)
-RUN yarn install --production
+# Install dependencies
+RUN yarn install
 
 # Copy your code and build the admin UI
 COPY . .
