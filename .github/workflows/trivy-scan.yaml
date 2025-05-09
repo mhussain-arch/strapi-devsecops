@@ -1,0 +1,28 @@
+name: Trivy Image Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  scan:
+    name: Build & Scan Docker Image with Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --file Dockerfile \
+            --tag strapi-app:${{ github.sha }} .
+
+      - name: Run Trivy Vulnerability Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: strapi-app:${{ github.sha }}
+          format: 'table'          # optional: table, json, etc.
+          exit-code: '1'           # non-zero if any vuln found
+          vuln-type: 'os,library'  # scan OS packages & app deps
