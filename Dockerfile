@@ -9,7 +9,7 @@ RUN npm install -g yarn@1.22.19 && \
     yarn config set ignore-engines true
 
 # Copy essential Yarn configuration first
-COPY package.json yarn.lock .yarnrc ./
+COPY package.json yarn.lock .yarnrc.yml ./
 
 # Install dependencies first (caching optimization)
 RUN yarn install
