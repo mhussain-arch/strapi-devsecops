@@ -1,54 +1,30 @@
-FROM node:22-alpine AS build
+# 1. Build stage using the official Strapi builder
+FROM strapi/strapi:latest AS builder
 
-RUN apk update && apk add --no-cache \
-      build-base \
-      gcc \
-      g++ \
-      make \
-      python3 \
-      python3-dev \
-      autoconf \
-      automake \
-      zlib-dev \
-      libpng-dev \
-      vips-dev \
-      git > /dev/null 2>&1
-
-
-RUN corepack enable \
- && corepack prepare yarn@4.5.0 --activate
-
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
-
-WORKDIR /opt/
+# Copy your app into the container
+WORKDIR /usr/src/api
 COPY package.json yarn.lock ./
-
+# Install dependencies (production only)
 RUN yarn install --production
 
-ENV PATH=/opt/node_modules/.bin:$PATH
-
-WORKDIR /opt/app
+# Copy your code and build the admin UI
 COPY . .
 RUN yarn build
 
-# --- Final runtime image ---
-FROM node:22-alpine
-RUN apk add --no-cache vips-dev
+# 2. Runtime stage using the official Strapi image
+FROM strapi/strapi:latest
 
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
+WORKDIR /usr/src/api
+# Copy only runtime dependencies and built admin
+COPY --from=builder /usr/src/api/node_modules ./node_modules
+COPY --from=builder /usr/src/api/build ./build
+COPY --from=builder /usr/src/api/public ./public
+COPY --from=builder /usr/src/api/server.js ./server.js
+# Copy config (database, env, etc)
+COPY --from=builder /usr/src/api/config ./config
 
-WORKDIR /opt/
-COPY --from=build /opt/node_modules ./node_modules
-
-WORKDIR /opt/app
-COPY --from=build /opt/app ./
-
-# Drop privileges
-RUN chown -R node:node /opt/app
+# Drop root privileges
 USER node
 
-# Expose Strapi port
 EXPOSE 1337
-CMD ["yarn", "start"]
+CMD ["node", "server.js"]
