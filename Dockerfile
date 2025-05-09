@@ -1,30 +1,57 @@
-# Creating multi-stage build for production
 FROM node:22-alpine AS build
-RUN apk update && apk add --no-cache build-base gcc autoconf automake zlib-dev libpng-dev vips-dev git > /dev/null 2>&1
+
+RUN apk update && apk add --no-cache \
+      build-base \
+      gcc \
+      g++ \
+      make \
+      python3 \
+      python3-dev \
+      autoconf \
+      automake \
+      zlib-dev \
+      libpng-dev \
+      vips-dev \
+      git > /dev/null 2>&1
+
+
+RUN corepack enable \
+ && corepack prepare yarn@4.5.0 --activate
+
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 
 WORKDIR /opt/
 COPY package.json yarn.lock ./
+
 RUN yarn global add node-gyp
-RUN yarn config set network-timeout 600000 -g && yarn install --production
+
+RUN yarn config set network-timeout 600000 -g \
+ && yarn install --production
+
 ENV PATH=/opt/node_modules/.bin:$PATH
+
 WORKDIR /opt/app
 COPY . .
 RUN yarn build
 
-# Creating final production image
+# --- Final runtime image ---
 FROM node:22-alpine
 RUN apk add --no-cache vips-dev
-ENV NODE_ENV=production
+
+ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
+
 WORKDIR /opt/
 COPY --from=build /opt/node_modules ./node_modules
+
 WORKDIR /opt/app
 COPY --from=build /opt/app ./
-ENV PATH=/opt/node_modules/.bin:$PATH
 
+# Drop privileges
 RUN chown -R node:node /opt/app
 USER node
+
+# Expose Strapi port
 EXPOSE 1337
 CMD ["yarn", "start"]
