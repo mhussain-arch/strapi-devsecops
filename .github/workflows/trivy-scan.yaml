@@ -17,14 +17,14 @@ jobs:
         run: |
           docker build \
             --build-arg NODE_ENV=production \
-            # --build-arg STRAPI_URL=https://api.example.com \ # Uncomment to set the Strapi Server URL
-            -t mystrapiapp:latest \ # Replace with your image name
-            -f Dockerfile .
+            -f Dockerfile \
+            -t strapi-app:latest \
+            .
 
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: strapi-app:${{ github.sha }}
+          image-ref: strapi-app:latest
           format: 'table'          # optional: table, json, etc.
           exit-code: '1'           # non-zero if any vuln found
           vuln-type: 'os,library'  # scan OS packages & app deps
