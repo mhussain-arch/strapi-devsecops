@@ -1,0 +1,63 @@
+name: SQLMap Scan
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  sqlmap:
+    name: Run SQLMap Against Strapi API
+    runs-on: ubuntu-latest 
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: strapi
+          POSTGRES_PASSWORD: strapi
+          POSTGRES_DB: strapi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Strapi dependencies
+        run: |
+          npm install
+
+      - name: Build Strapi
+        run: |
+          npm run build
+
+      - name: Start Strapi in background
+        run: |
+          nohup npm run develop & sleep 20
+
+      - name: Install sqlmap
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sqlmap
+
+      - name: Run sqlmap scan on API
+        run: |
+          echo "Running sqlmap on Strapi API..."
+          sqlmap -u "http://localhost:1337/api/users?sort=id" --batch --output-dir=sqlmap-output
+
+      - name: Show SQLMap Results
+        run: |
+          echo "Scan complete. Displaying result files:"
+          ls -R sqlmap-output
