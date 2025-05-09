@@ -1,0 +1,31 @@
+name: Trivy Vulnerability Scan (Windows)
+
+on:
+  push:
+    branches:
+      - saadqamar_work  # Replace with your branch name
+
+jobs:
+  trivy-scan:
+    runs-on: windows-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      # Install Trivy on Windows
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh -o install_trivy.ps1
+          powershell -File install_trivy.ps1
+
+      # Run Filesystem Scan
+      - name: Run Trivy Filesystem Scan
+        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+
+      # Optional: Run Docker Image Scan
+      - name: Run Trivy Docker Image Scan
+        run: |
+          docker pull your-docker-image:latest
+          trivy image --exit-code 1 --severity HIGH,CRITICAL your-docker-image:latest
