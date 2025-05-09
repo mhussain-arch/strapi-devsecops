@@ -11,13 +11,14 @@ RUN npm install -g yarn --force && \
     yarn config set ignore-engines true
 
 # Copy essential Yarn configuration first
-COPY package.json yarn.lock .yarnrc.yml ./
+COPY package.json .yarnrc.yml ./
+
+# Copy application files
+COPY . .
 
 # Install dependencies first (caching optimization)
 RUN yarn install
 
-# Copy application files
-COPY . .
 
 # Build the project
 RUN yarn build
