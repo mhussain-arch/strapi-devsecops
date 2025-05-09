@@ -1,5 +1,5 @@
 # 1. Build stage using official Strapi builder (Node 18)
-FROM strapi/strapi:latest-node18-alpine AS builder
+FROM strapi/strapi:latest AS builder
 
 WORKDIR /usr/src/api
 COPY package.json yarn.lock ./
@@ -11,7 +11,7 @@ COPY . .
 RUN yarn build
 
 # 2. Runtime stage (also Node 18)
-FROM strapi/strapi:latest-node18-alpine
+FROM strapi/strapi:latest
 
 WORKDIR /usr/src/api
 # Copy only what’s needed at runtime
