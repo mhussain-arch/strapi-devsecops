@@ -26,4 +26,4 @@ jobs:
             -v /usr/bin/docker-containerd:/usr/bin/docker-containerd \
             -v /usr/bin/docker-runc:/usr/bin/docker-runc \
             docker/docker-bench-security:latest \
-            --check container_images
+            -c container_images
