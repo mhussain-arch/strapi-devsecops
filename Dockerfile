@@ -3,49 +3,41 @@ FROM node:18-slim AS builder
 
 WORKDIR /app
 
-# Enable Corepack for Yarn Berry (optional)
-RUN corepack enable && \
-    corepack prepare yarn@stable --activate
+# Switch to Yarn Classic (v1) as Strapi works better with it
+RUN npm install -g yarn@1.22
 
-# Copy package files
-COPY package.json yarn.lock ./
+# Copy package files and workspace directories first
+COPY package.json yarn.lock .yarnrc* ./
+COPY extensions/ ./extensions/
+COPY config/ ./config/
 
-# Install all dependencies (including devDependencies)
+# Install dependencies
 RUN yarn install
 
-# Copy application code
+# Copy remaining application files
 COPY . .
 
-# Build the project (remove if not needed)
+# Build the project
 RUN yarn build
-
-# Remove development dependencies
-RUN rm -rf node_modules
 
 # Stage 2: Production - Create final optimized image
 FROM node:18-slim
 
 WORKDIR /app
 
-# Copy application files from builder
-COPY --from=builder /app .
-
-# Enable Corepack for Yarn Berry (optional)
-RUN corepack enable && \
-    corepack prepare yarn@stable --activate
-
-# Install production dependencies only
-RUN yarn install --frozen-lockfile --production
-
-# Create non-root user and set permissions
+# Create non-root user first
 RUN addgroup --system --gid 1001 strapi && \
-    adduser --system --uid 1001 strapi --ingroup strapi && \
-    chown -R strapi:strapi /app
+    adduser --system --uid 1001 strapi --ingroup strapi
+
+# Copy necessary files from builder
+COPY --from=builder --chown=strapi:strapi /app/node_modules ./node_modules
+COPY --from=builder --chown=strapi:strapi /app/package.json /app/yarn.lock ./
+COPY --from=builder --chown=strapi:strapi /app/config ./config
+COPY --from=builder --chown=strapi:strapi /app/extensions ./extensions
+COPY --from=builder --chown=strapi:strapi /app/build ./build
 
 USER strapi
 
-# Expose Strapi port
 EXPOSE 1337
 
-# Start Strapi in production mode
 CMD ["yarn", "start"]
