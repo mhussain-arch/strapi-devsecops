@@ -81,3 +81,4 @@ jobs:
         run: |
           echo "SQLMap output:"
           ls -R /sqlmap/output || echo "No output found"
+
