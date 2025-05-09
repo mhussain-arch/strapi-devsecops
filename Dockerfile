@@ -1,29 +1,27 @@
-# 1. Build stage using the official Strapi builder
-FROM strapi/strapi:latest AS builder
+# 1. Build stage using official Strapi builder (Node 18)
+FROM strapi/strapi:latest-node18-alpine AS builder
 
-# Copy your app into the container
 WORKDIR /usr/src/api
 COPY package.json yarn.lock ./
-# Install dependencies
+
 RUN yarn install
 
-# Copy your code and build the admin UI
+# Copy source and build admin UI
 COPY . .
 RUN yarn build
 
-# 2. Runtime stage using the official Strapi image
-FROM strapi/strapi:latest
+# 2. Runtime stage (also Node 18)
+FROM strapi/strapi:latest-node18-alpine
 
 WORKDIR /usr/src/api
-# Copy only runtime dependencies and built admin
+# Copy only what’s needed at runtime
 COPY --from=builder /usr/src/api/node_modules ./node_modules
-COPY --from=builder /usr/src/api/build ./build
-COPY --from=builder /usr/src/api/public ./public
-COPY --from=builder /usr/src/api/server.js ./server.js
-# Copy config (database, env, etc)
-COPY --from=builder /usr/src/api/config ./config
+COPY --from=builder /usr/src/api/build       ./build
+COPY --from=builder /usr/src/api/public      ./public
+COPY --from=builder /usr/src/api/server.js   ./server.js
+COPY --from=builder /usr/src/api/config      ./config
 
-# Drop root privileges
+# Drop to non-root user
 USER node
 
 EXPOSE 1337
