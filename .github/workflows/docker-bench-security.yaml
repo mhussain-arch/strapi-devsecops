@@ -1,0 +1,29 @@
+name: Docker Bench Security
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  bench:
+    name: CIS Docker Benchmark Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Docker Bench for Security
+        run: |
+          docker run --rm \
+            --net host \
+            --pid host \
+            --cap-add audit_control \
+            -v /var/lib:/var/lib \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v /usr/bin/docker-containerd:/usr/bin/docker-containerd \
+            -v /usr/bin/docker-runc:/usr/bin/docker-runc \
+            docker/docker-bench-security:latest \
+            -c container_images
