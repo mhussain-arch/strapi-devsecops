@@ -1,33 +1,35 @@
 # Stage 1: Builder - Install dependencies and build the project
-FROM node:20 AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Switch to Yarn Classic (v1) as Strapi works better with it
-# RUN npm install -g yarn # yarn already exists apparently
+# Force Yarn Classic installation and configuration
+RUN npm install -g yarn@1.22.19 && \
+    yarn set version classic && \
+    yarn config set ignore-engines true
 
-# Copy package files and workspace directories first
-COPY package.json yarn.lock .yarnrc* ./
+# Copy essential Yarn configuration first
+COPY package.json yarn.lock .yarnrc ./
 
-# Install dependencies
+# Install dependencies first (caching optimization)
 RUN yarn install
 
-# Copy remaining application files
+# Copy application files
 COPY . .
 
 # Build the project
 RUN yarn build
 
 # Stage 2: Production - Create final optimized image
-FROM node:20
+FROM node:20-slim
 
 WORKDIR /app
 
-# Create non-root user first
+# Create non-root user
 RUN addgroup --system --gid 1001 strapi && \
     adduser --system --uid 1001 strapi --ingroup strapi
 
-# Copy necessary files from builder
+# Copy production files from builder
 COPY --from=builder --chown=strapi:strapi /app/node_modules ./node_modules
 COPY --from=builder --chown=strapi:strapi /app/package.json /app/yarn.lock ./
 COPY --from=builder --chown=strapi:strapi /app/config ./config
