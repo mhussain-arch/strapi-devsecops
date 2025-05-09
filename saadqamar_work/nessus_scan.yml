@@ -1,78 +1,62 @@
-name: Nessus Vulnerability Scan (Windows)
+- name: Start Nessus Scan via PowerShell
+  shell: pwsh
+  run: |
+    # Set variables
+    $NESSUS_URL = "https://localhost:8834/"
+    $NESSUS_ACCESS_KEY = "${{ secrets.NESSUS_ACCESS_KEY }}"
+    $NESSUS_SECRET_KEY = "${{ secrets.NESSUS_SECRET_KEY }}"
+    $NESSUS_USERNAME = "${{ secrets.NESSUS_USERNAME }}"
+    $NESSUS_PASSWORD = "${{ secrets.NESSUS_PASSWORD }}"
 
-on:
-  push:
-    branches:
-      - saadqamar_work
+    # Authenticate to Nessus
+    $response = Invoke-RestMethod -Uri "$NESSUS_URL/session" `
+      -Method POST `
+      -Body (@{ username = $NESSUS_USERNAME; password = $NESSUS_PASSWORD } | ConvertTo-Json) `
+      -ContentType "application/json"
+    $token = $response.token
 
-jobs:
-  nessus-scan:
-    runs-on: windows-latest
+    # Launch a scan
+    $scanPayload = @{
+      settings = @{
+        name = "GitHub Scan"
+        text_targets = "192.168.1.10"  # Replace with your actual scan target(s)
+        description = "Scan initiated via GitHub Actions"
+        policy_id = 1  # Replace with valid policy ID
+      }
+    }
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    $headers = @{ "X-Cookie" = "token=$token" }
 
-      - name: Install curl (if needed)
-        run: choco install curl -y
+    $scanResponse = Invoke-RestMethod -Uri "$NESSUS_URL/scans" -Method POST -Headers $headers -Body ($scanPayload | ConvertTo-Json -Depth 2) -ContentType "application/json"
+    $scanId = $scanResponse.scan.id
+    Write-Output "Scan started with ID: $scanId"
 
-      - name: Start Nessus Scan via PowerShell
-        shell: pwsh
-        run: |
-          # Set variables
-          $NESSUS_URL = "https://localhost:8834/"
-          $NESSUS_ACCESS_KEY = "${{ secrets.NESSUS_ACCESS_KEY }}"
-          $NESSUS_SECRET_KEY = "${{ secrets.NESSUS_SECRET_KEY }}"
-          $NESSUS_USERNAME = "${{ secrets.NESSUS_USERNAME }}"
-          $NESSUS_PASSWORD = "${{ secrets.NESSUS_PASSWORD }}"
+    # Poll until scan completes
+    $status = ""
+    while ($status -ne "completed") {
+      Start-Sleep -Seconds 30
+      $status = (Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId" -Method GET -Headers $headers).info.status
+      Write-Output "Scan status: $status"
+    }
 
-          # Authenticate to Nessus
-          $response = Invoke-RestMethod -Uri "$NESSUS_URL/session" -Method POST -Body (@{ username = saadqamar478; password = s@@dq@m@r478 } | ConvertTo-Json) -ContentType "application/json"
-          $token = $response.token
+    # Download report (JSON format)
+    $exportResponse = Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId/export" `
+        -Method POST -Headers $headers `
+        -Body (@{ format = "json" } | ConvertTo-Json) `
+        -ContentType "application/json"
 
-          # Launch a scan
-          $scanPayload = @{
-            settings = @{
-              name = "GitHub Scan"
-              text_targets = "192.168.1.10"  # Replace with your actual scan target(s)
-              description = "Scan initiated via GitHub Actions"
-              policy_id = 1  # Replace with valid policy ID
-            }
-          }
+    $fileId = $exportResponse.file
 
-          $headers = @{ "X-Cookie" = "token=$token" }
+    # Wait for export to be ready
+    $ready = $false
+    while (-not $ready) {
+        Start-Sleep -Seconds 10
+        $statusCheck = Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId/export/$fileId/status" -Method GET -Headers $headers
+        $ready = $statusCheck.status -eq "ready"
+        Write-Output "Export status: $($statusCheck.status)"
+    }
 
-          $scanResponse = Invoke-RestMethod -Uri "$NESSUS_URL/scans" -Method POST -Headers $headers -Body ($scanPayload | ConvertTo-Json -Depth 2) -ContentType "application/json"
-          $scanId = $scanResponse.scan.id
-          Write-Output "Scan started with ID: $scanId"
-
-          # Poll until scan completes
-          $status = ""
-          while ($status -ne "completed") {
-            Start-Sleep -Seconds 30
-            $status = (Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId" -Method GET -Headers $headers).info.status
-            Write-Output "Scan status: $status"
-          }
-
-          # Download report (JSON format)
-          $exportResponse = Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId/export" `
-              -Method POST -Headers $headers `
-              -Body (@{ format = "json" } | ConvertTo-Json) `
-              -ContentType "application/json"
-
-          $fileId = $exportResponse.file
-
-          # Wait for export to be ready
-          $ready = $false
-          while (-not $ready) {
-              Start-Sleep -Seconds 10
-              $statusCheck = Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId/export/$fileId/status" -Method GET -Headers $headers
-              $ready = $statusCheck.status -eq "ready"
-              Write-Output "Export status: $($statusCheck.status)"
-          }
-
-          # Download report
-          Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId/export/$fileId/download" `
-              -Method GET -Headers $headers `
-              -OutFile nessus_report.json
-
+    # Download report
+    Invoke-RestMethod -Uri "$NESSUS_URL/scans/$scanId/export/$fileId/download" `
+        -Method GET -Headers $headers `
+        -OutFile nessus_report.json
