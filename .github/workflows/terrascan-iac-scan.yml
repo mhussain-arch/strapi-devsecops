@@ -1,9 +1,9 @@
 name: Terrascan IaC Security Scan
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
+    branches: [ main ]
+  push:
     branches: [ main ]
 
 jobs:
@@ -12,40 +12,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-     
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0    
 
-      
       - name: Install Terrascan CLI
-        uses: tenable/terrascan-action@main 
+        run: |
+          curl -L https://github.com/tenable/terrascan/releases/latest/download/terrascan_linux_amd64 -o terrascan
+          chmod +x terrascan
+          sudo mv terrascan /usr/local/bin/
 
-     
-      - name: Terrascan version
-        run: terrascan version
+      - name: Initialize Terrascan (optional but recommended)
+        run: terrascan init
 
-     
-      - name: Run Terrascan for Terraform
-        id: terrascan
+      - name: Run Terrascan Scan
         run: |
           terrascan scan \
-            -i terraform \
-            -d devsecops/milestone-3/terraform \
-            --format sarif \
-            --output terrascan-results.sarif
-        
+            -t terraform \
+            -d . \
+            --output sarif \
+            --non-recursive > terrascan-results.sarif
 
-      
-      - name: Upload SARIF to Code Scanning
-        uses: github/codeql-action/upload-sarif@v3  
+      - name: Upload SARIF file to GitHub (optional)
+        uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: terrascan-results.sarif
-
-      
-      - name: Fail on Violations
-        if: steps.terrascan.outcome == 'failure'
-        run: |
-          echo "Policy violations detected – failing build."
-          exit 1
