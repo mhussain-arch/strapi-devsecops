@@ -8,8 +8,6 @@ RUN npm install -g yarn@1.22
 
 # Copy package files and workspace directories first
 COPY package.json yarn.lock .yarnrc* ./
-COPY extensions/ ./extensions/
-COPY config/ ./config/
 
 # Install dependencies
 RUN yarn install
