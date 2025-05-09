@@ -27,13 +27,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Enable Corepack and install Yarn
-        run: |
-          corepack enable
-          yarn --version
+      - name: Enable Corepack
+        run: corepack enable
 
-      - name: Install dependencies with Yarn
-        run: yarn install
+      - name: Install dependencies (disable hardened mode)
+        env:
+          YARN_ENABLE_HARDENED_MODE: '0'
+        run: yarn install        # unlocks lockfile changes under hardened mode :contentReference[oaicite:4]{index=4}
 
       - name: Build Strapi
         run: yarn build
@@ -45,8 +45,10 @@ jobs:
 
       - name: Install Ngrok
         run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
+            | sudo tee /etc/apt/sources.list.d/ngrok.list
           sudo apt update && sudo apt install ngrok
 
       - name: Start Ngrok tunnel
@@ -54,7 +56,8 @@ jobs:
           ngrok http 1337 > /dev/null &
           sleep 10
           curl http://127.0.0.1:4040/api/tunnels > tunnels.json
-          echo "TUNNEL_URL=$(jq -r '.tunnels[0].public_url' < tunnels.json)" >> $GITHUB_ENV
+          echo "TUNNEL_URL=$(jq -r '.tunnels[0].public_url' < tunnels.json)" \
+            >> $GITHUB_ENV
 
       - name: Wait for Strapi readiness
         run: |
@@ -68,4 +71,13 @@ jobs:
 
       - name: Run SQLMap
         run: |
-          docker run --rm -v $(pwd):/sqlmap sqlmapproject/sqlmap -u "$TUNNEL_URL/api/articles?filters[id]=1" --batch --output-dir=/sqlmap/output --flush-session
+          docker run --rm \
+            -v "${{ github.workspace }}":/sqlmap \
+            sqlmapproject/sqlmap \
+            -u "$TUNNEL_URL/api/articles?filters[id]=1" \
+            --batch --output-dir=/sqlmap/output --flush-session
+
+      - name: List SQLMap results
+        run: |
+          echo "SQLMap output:"
+          ls -R /sqlmap/output || echo "No output found"
