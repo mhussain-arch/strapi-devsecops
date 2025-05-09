@@ -1,0 +1,84 @@
+name: SQLMap Scan Test
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sqlmap:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: strapi
+          POSTGRES_PASSWORD: strapi
+          POSTGRES_DB: strapi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies (disable hardened mode)
+        env:
+          YARN_ENABLE_HARDENED_MODE: '0'
+        run: yarn install        # unlocks lockfile changes under hardened mode :contentReference[oaicite:4]{index=4}
+
+      - name: Build Strapi
+        run: yarn build
+
+      - name: Start Strapi in background
+        run: |
+          nohup yarn develop > strapi.log 2>&1 &
+          sleep 20
+
+      - name: Install Ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
+            | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install ngrok
+
+      - name: Start Ngrok tunnel
+        run: |
+          ngrok http 1337 > /dev/null &
+          sleep 10
+          curl http://127.0.0.1:4040/api/tunnels > tunnels.json
+          echo "TUNNEL_URL=$(jq -r '.tunnels[0].public_url' < tunnels.json)" \
+            >> $GITHUB_ENV
+
+      - name: Wait for Strapi readiness
+        run: |
+          for i in {1..30}; do
+            if curl --silent "$TUNNEL_URL/api"; then
+              echo "Strapi is up!"
+              break
+            fi
+            sleep 3
+          done
+
+      - name: Run SQLMap
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}":/sqlmap \
+            sqlmapproject/sqlmap \
+            -u "$TUNNEL_URL/api/articles?filters[id]=1" \
+            --batch --output-dir=/sqlmap/output --flush-session
+
+      - name: List SQLMap results
+        run: |
+          echo "SQLMap output:"
+          ls -R /sqlmap/output || echo "No output found"
+

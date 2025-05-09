@@ -1,0 +1,51 @@
+name: Terrascan IaC Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  terrascan:
+    name: Run Terrascan Scan
+    runs-on: ubuntu-latest
+
+    steps:
+     
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0    
+
+      
+      - name: Install Terrascan CLI
+        uses: tenable/terrascan-action@main 
+
+     
+      - name: Terrascan version
+        run: terrascan version
+
+     
+      - name: Run Terrascan for Terraform
+        id: terrascan
+        run: |
+          terrascan scan \
+            -i terraform \
+            -d devsecops/milestone-3/terraform \
+            --format sarif \
+            --output terrascan-results.sarif
+        
+
+      
+      - name: Upload SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3  
+        with:
+          sarif_file: terrascan-results.sarif
+
+      
+      - name: Fail on Violations
+        if: steps.terrascan.outcome == 'failure'
+        run: |
+          echo "Policy violations detected – failing build."
+          exit 1
