@@ -1,15 +1,12 @@
-name: SQLMap Scan
+name: SQLMap Scan Test
 
 on:
   pull_request:
     branches: [ main ]
-  push:
-    branches: [ main ]
 
 jobs:
   sqlmap:
-    name: Run SQLMap Against Strapi API
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
 
     services:
       postgres:
@@ -21,43 +18,55 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Install Strapi dependencies
-        run: |
-          npm install
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
 
       - name: Build Strapi
-        run: |
-          npm run build
+        run: npm run build
 
       - name: Start Strapi in background
         run: |
-          nohup npm run develop & sleep 20
+          nohup npm run develop > strapi.log 2>&1 &
+          sleep 15
 
-      - name: Install sqlmap
+      - name: Install Ngrok
         run: |
-          sudo apt-get update
-          sudo apt-get install -y sqlmap
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install ngrok
 
-      - name: Run sqlmap scan on API
+      - name: Start Ngrok tunnel
         run: |
-          echo "Running sqlmap on Strapi API..."
-          sqlmap -u "http://localhost:1337/api/users?sort=id" --batch --output-dir=sqlmap-output
+          ngrok http 1337 > /dev/null &
+          sleep 10
+          curl http://127.0.0.1:4040/api/tunnels > tunnels.json
+          cat tunnels.json
+          echo "TUNNEL_URL=$(jq -r '.tunnels[0].public_url' < tunnels.json)" >> $GITHUB_ENV
 
-      - name: Show SQLMap Results
+      - name: Wait for Strapi readiness
         run: |
-          echo "Scan complete. Displaying result files:"
-          ls -R sqlmap-output
+          for i in {1..30}; do
+            if curl --silent "$TUNNEL_URL/api"; then
+              echo "Strapi is up!"
+              break
+            fi
+            sleep 3
+          done
+
+      - name: Run SQLMap
+        run: |
+          docker run --rm -v $(pwd):/sqlmap sqlmapproject/sqlmap -u "$TUNNEL_URL/api/articles?filters[id]=1" --batch --output-dir=/sqlmap/output --flush-session
