@@ -6,9 +6,9 @@ WORKDIR /app
 RUN yarn --version
 
 # Force Yarn Classic installation and configuration
-# RUN npm install -g yarn@1.22.19 && \
-#     yarn set version classic && \
-#     yarn config set ignore-engines true
+RUN npm install -g yarn --force && \
+    yarn set version classic && \
+    yarn config set ignore-engines true
 
 # Copy essential Yarn configuration first
 COPY package.json yarn.lock .yarnrc.yml ./
