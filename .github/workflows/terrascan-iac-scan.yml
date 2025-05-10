@@ -1,0 +1,26 @@
+name: Terrascan IaC Security Scan
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  terrascan:
+    name: Run Terrascan Scan
+    runs-on: ubuntu-latest
+
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Terrascan (pinned v1.4.1)
+        uses: tenable/terrascan-action@v1.4.1
+        with:
+          iac_type: terraform                       
+          iac_dir: ./devsecops/milestone-3/terraform 
+          non_recursive: true                       
+          only_warn: true                           
+          sarif_upload: true                        
