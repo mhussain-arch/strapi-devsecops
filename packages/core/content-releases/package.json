@@ -67,7 +67,7 @@
     "date-fns": "2.30.0",
     "date-fns-tz": "2.0.1",
     "formik": "2.4.5",
-    "lodash": "4.17.21",
+    "lodash": "4.17.23",
     "node-schedule": "2.1.1",
     "qs": "6.11.1",
     "react-intl": "6.6.2",
